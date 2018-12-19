@@ -1,3 +1,7 @@
 fsed
 cmake*
 .idea
+CMakeLists.txt
+obj/
+testbin
+fsed

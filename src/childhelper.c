@@ -4,9 +4,9 @@
 
 #include <sys/ptrace.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "helper.h"
-
 #include "childhelper.h"
 
 long* getparams(pid_t child, unsigned int paramcnt) {

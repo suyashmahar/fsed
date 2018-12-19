@@ -1,6 +1,7 @@
 #include "main.h"
 #include "paramproc.h"
 #include "helper.h"
+#include "childhelper.h"
 
 configs_t progconfigs;
 

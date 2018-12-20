@@ -3,6 +3,7 @@
 //
 
 #include "helper.h"
+#include "ruleproc.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,14 +17,3 @@ void error(char *errstr) {
     exit(1);
 }
 
-void reverse(char *str) {
-    int i;
-    size_t j;
-    char temp;
-    for(i = 0, j = strlen(str) - 2;
-        i <= j; ++i, --j) {
-        temp = str[i];
-        str[i] = str[j];
-        str[j] = temp;
-    }
-}

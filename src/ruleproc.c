@@ -5,7 +5,6 @@
 #include "ruleproc.h"
 
 rule_t *parse_rule(char *rule) {
-    printf("rule: %s\n", rule);
     assert(rule != NULL && "Null reference to rule.");
 
     size_t rulelen = strlen(rule);
@@ -41,7 +40,7 @@ rule_t *parse_rule(char *rule) {
                 if (rule[rule_itr] == SEP) {
                     return result;
                 }
-                result->new[newptr] = rule[rule_itr];
+                result->new[newptr++] = rule[rule_itr];
                 break;
             }
             default: {

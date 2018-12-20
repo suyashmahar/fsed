@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <sys/reg.h>
+#include "ruleproc.h"
 
 const size_t long_sz;
 
@@ -18,6 +19,5 @@ const unsigned int reg_order[6];
 #endif
 
 void error(char *errstr);
-void reverse(char *str);
 
 #endif //FSED_HELPER_H

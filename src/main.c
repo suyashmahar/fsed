@@ -4,11 +4,87 @@
 #include "childhelper.h"
 #include "ruleproc.h"
 
+#if (__STDC_VERSION__ >= 199901L)
+#include <stdint.h>
+#endif
+
+/* Count number of from string occurrences */
+size_t countFreq(const char *pat, const char *txt) {
+    int M = (int)strlen(pat);
+    int N = (int)strlen(txt);
+    int res = 0;
+
+    /* A loop to slide pat[] one by one */
+    for (int i = 0; i <= N - M; i++)
+    {
+        /* For current index i, check for
+           pattern match */
+        int j;
+        for (j = 0; j < M; j++)
+            if (txt[i+j] != pat[j])
+                break;
+
+        // if pat[0...M-1] = txt[i, i+1, ...i+M-1]
+        if (j == M)
+        {
+            res++;
+            j = 0;
+        }
+    }
+    return (size_t)res;
+}
+
+int *getpos(const char *pat, const char *txt, int count) {
+    int M = (int)strlen(pat);
+    int N = (int)strlen(txt);
+    int res = 0;
+
+    int *pos = malloc(count*sizeof(int));
+    int pos_itr = 0;
+    /* A loop to slide pat[] one by one */
+    for (int i = 0; i <= N - M; i++)
+    {
+        /* For current index i, check for
+           pattern match */
+        int j;
+        for (j = 0; j < M; j++)
+            if (txt[i+j] != pat[j])
+                break;
+
+        // if pat[0...M-1] = txt[i, i+1, ...i+M-1]
+        if (j == M)
+        {
+            pos[pos_itr] = i;
+            j = 0;
+        }
+    }
+    return pos;
+}
+
+char *repl_str(const char *str, const char *from, const char *to) {
+    size_t count = countFreq(from, str);
+    int *pos = getpos(from, str, (int)count);
+
+    char *result = calloc(count, sizeof(char));
+
+    int str_itr = 0;
+    int result_itr = 0;
+    for (int i = 0; i < count; i++) {
+        /* #####from#####from#####
+         * #####to  #####to  #####
+         */
+        memcpy(result+result_itr, str+str_itr, pos[i+1]-pos[i]);
+        result_itr += strlen(to);
+        memcpy(result+result_itr, to, strlen(to));
+        result_itr += strlen(to);
+
+    }
+    return ret;
+}
 
 int main(int argc, char* argv[]) {
     configs_t progconfigs;
     int push = procconfigs(argc, argv, &progconfigs);
-    printf("verbose: %d\n", progconfigs.verbose);
     if (progconfigs.verbose > NO_VERBOSE)
         printconfigs(&progconfigs);
 
@@ -63,17 +139,6 @@ int main(int argc, char* argv[]) {
                     case SYS_READ:{
                         break;
                     }
-                    case SYS_WRITE: {
-                        params = getparams(child, 3);
-
-                        str = (char *)calloc((size_t)(params[2]+1),sizeof(char));
-                        getdata(child, params[1], str, (int)params[2]);
-                        reverse(str);
-                        putdata(child, params[1], str, (int)params[2]);
-
-                        free(params);
-                        break;
-                    }
                     default: {
                         break;
                     }
@@ -89,17 +154,19 @@ int main(int argc, char* argv[]) {
                         params = getparams(child, 3);
                         int fd = (int)params[0];
                         if (fdtbl[fd]->marked) {
-                            str = (char *)calloc((size_t)(params[2]+1),sizeof(char));
+                            str = (char *)calloc((size_t)(params[2]+1+(rule->new)-(rule->orig)),sizeof(char));
+
                             getdata(child, params[1], str, (int)params[2]);
-                            reverse(str);
-                            putdata(child, params[1], str, (int)params[2]);
+                            char *modified_str = repl_str(str, rule->orig, rule->new);
+                            putdata(child, params[1], modified_str, strlen(modified_str));
+
+                            /* Change the size of buf */
+                            ptrace(PTRACE_POKEUSER, child, sizeof(long)*RDX, params[2]+1+(rule->new)-(rule->orig));
                         }
 
                         free(params);
                         break;
                     }
-                    case SYS_WRITE:
-                        break;
                     case SYS_OPENAT: {
                         struct user_regs_struct regs;
                         ptrace(PTRACE_GETREGS, child, NULL, &regs);
@@ -116,11 +183,14 @@ int main(int argc, char* argv[]) {
                         getdata(child, params[1], fdtbl[fd]->fpath, FNAME_MAX);
                         if (0 == strcmp(fdtbl[fd]->fpath, progconfigs.targetfile)) {
                             fdtbl[fd]->marked = true;
+                            if (progconfigs.verbose > NO_VERBOSE)
+                                printf("Target fd(%d) for %s found.\n", fd, progconfigs.targetfile);
                         } else { /* Table entry might already be written */
                             fdtbl[fd]->marked = false;
                         }
 
-                        printf("fd: %3d -> %s\n", fd, fdtbl[fd]->fpath);
+                        if (progconfigs.verbose == VERBOSE_L3)
+                            printf("fd: %3d -> %s\n", fd, fdtbl[fd]->fpath);
                         fdtbl[fd]->flags = (int)params[1];
                         fdtbl[fd]->mode = (int)params[2];
                         break;
@@ -132,10 +202,12 @@ int main(int argc, char* argv[]) {
             ptrace(PTRACE_SYSCALL, child, NULL, NULL);
         }
     }
-    printf("Exiting...\n");
-    for (int i = 0; i < FD_MAX; i++) {
-        if (fdtbl[i] != NULL) {
-            printf("%3d: [%d]%3d -> '%s'\n", i, fdtbl[i]->marked, fdtbl[i]->fd, fdtbl[i]->fpath);
+    if (progconfigs.verbose == VERBOSE_L3) {
+        printf("Exiting, listing open file descriptors...\n");
+        for (int i = 0; i < FD_MAX; i++) {
+            if (fdtbl[i] != NULL) {
+                printf("%3d: [%d]%3d -> '%s'\n", i, fdtbl[i]->marked, fdtbl[i]->fd, fdtbl[i]->fpath);
+            }
         }
     }
     return 0;

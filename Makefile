@@ -44,7 +44,7 @@ endif
 
 
 fsed: $(MAIN) $(OBJS) $(SRCDIR)/*.h | depend
-	$(CXX) $(CFLAGS) -Dfsed -o $@ $(MAIN) $(OBJS)
+	$(CC) $(CFLAGS) -Dfsed -o $@ $(MAIN) $(OBJS)
 
 $(OBJS): | $(OBJDIR)
 

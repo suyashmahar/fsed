@@ -39,6 +39,7 @@ typedef struct fdentry {
     char *fpath;
     int flags;
     int mode;
+    bool marked;
 } fdentry_t;
 
 

@@ -4,10 +4,6 @@
 #include "childhelper.h"
 #include "ruleproc.h"
 
-#if (__STDC_VERSION__ >= 199901L)
-#include <stdint.h>
-#endif
-
 /* Count number of from string occurrences */
 size_t countFreq(const char *pat, const char *txt) {
     int M = (int)strlen(pat);
@@ -54,37 +50,44 @@ int *getpos(const char *pat, const char *txt, int count) {
         // if pat[0...M-1] = txt[i, i+1, ...i+M-1]
         if (j == M)
         {
-            pos[pos_itr] = i;
+            pos[pos_itr++] = i;
             j = 0;
         }
     }
     return pos;
 }
 
-char *repl_str(const char *str, const char *from, const char *to) {
-    size_t count = countFreq(from, str);
-    int *pos = getpos(from, str, (int)count);
+int replace(FILE *fp, char *buf, char *resultbuf, int buflen, char *from, char *to) {
+    testalloc(resultbuf);
 
-    char *result = calloc(count, sizeof(char));
+    fread(resultbuf, buflen*sizeof(unsigned char), 1, fp);
 
-    int str_itr = 0;
-    int result_itr = 0;
-    for (int i = 0; i < count; i++) {
-        /* #####from#####from#####
-         * #####to  #####to  #####
-         */
-        memcpy(result+result_itr, str+str_itr, pos[i+1]-pos[i]);
-        result_itr += strlen(to);
-        memcpy(result+result_itr, to, strlen(to));
-        result_itr += strlen(to);
+    int *pos = getpos(from, buf, (int)countFreq(from, buf));
+    int poslen = (int)countFreq(from, buf);
 
+    size_t tolen = strlen(to);
+    int pos_itr = 0, result_itr = 0;
+    for (int i = 0; i < buflen; i++) {
+        if (i == pos[pos_itr]) {
+            for (int to_itr = 0; (to_itr < tolen) && (i+to_itr < buflen); to_itr++) {
+                resultbuf[result_itr++] = to[to_itr];
+            }
+            pos_itr = pos_itr < poslen-1 ? pos_itr+1 : pos_itr;
+            i += tolen-1;
+        } else {
+            resultbuf[result_itr++] = buf[i];
+        }
     }
-    return ret;
+    return 0;
 }
 
 int main(int argc, char* argv[]) {
+    FILE *targetfp;
+
     configs_t progconfigs;
+
     int push = procconfigs(argc, argv, &progconfigs);
+
     if (progconfigs.verbose > NO_VERBOSE)
         printconfigs(&progconfigs);
 
@@ -155,10 +158,16 @@ int main(int argc, char* argv[]) {
                         int fd = (int)params[0];
                         if (fdtbl[fd]->marked) {
                             str = (char *)calloc((size_t)(params[2]+1+(rule->new)-(rule->orig)),sizeof(char));
+                            int strlen = (int)params[2];
 
-                            getdata(child, params[1], str, (int)params[2]);
-                            char *modified_str = repl_str(str, rule->orig, rule->new);
-                            putdata(child, params[1], modified_str, strlen(modified_str));
+                            getdata(child, params[1], str, strlen);
+
+                            char *resultbuf = calloc((size_t)strlen, sizeof(unsigned char));
+                            replace(targetfp, str, resultbuf, strlen, rule->orig, rule->new);
+                            if (progconfigs.verbose == VERBOSE_L3) {
+                                printf("Replaced `%s' with `%s'\n", str, resultbuf);
+                            }
+                            putdata(child, params[1], resultbuf, strlen);
 
                             /* Change the size of buf */
                             ptrace(PTRACE_POKEUSER, child, sizeof(long)*RDX, params[2]+1+(rule->new)-(rule->orig));
@@ -183,6 +192,7 @@ int main(int argc, char* argv[]) {
                         getdata(child, params[1], fdtbl[fd]->fpath, FNAME_MAX);
                         if (0 == strcmp(fdtbl[fd]->fpath, progconfigs.targetfile)) {
                             fdtbl[fd]->marked = true;
+                            targetfp = fopen(fdtbl[fd]->fpath, "rb");
                             if (progconfigs.verbose > NO_VERBOSE)
                                 printf("Target fd(%d) for %s found.\n", fd, progconfigs.targetfile);
                         } else { /* Table entry might already be written */

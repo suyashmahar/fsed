@@ -19,5 +19,6 @@ const unsigned int reg_order[6];
 #endif
 
 void error(char *errstr);
+void testalloc(void *ptr);
 
 #endif //FSED_HELPER_H

@@ -46,7 +46,7 @@ int procconfigs(int argc, char *argv[], configs_t *progconfigs) {
         param_proc_count++;
     }
     error("No program passed in arguments, use --help for details on how to use fsed.\n");
-    return NULL;
+    return -1;
 }
 
 void printconfigs(configs_t *progconfigs) {

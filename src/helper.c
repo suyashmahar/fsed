@@ -17,3 +17,9 @@ void error(char *errstr) {
     exit(1);
 }
 
+void testalloc(void *ptr) {
+    if (ptr == NULL) {
+        error("Memory allocation failed.");
+    }
+}
+

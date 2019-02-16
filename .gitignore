@@ -3,5 +3,6 @@ cmake*
 .idea
 CMakeLists.txt
 obj/
-testbin
+test/testbin
 fsed
+*~

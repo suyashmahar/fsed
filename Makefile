@@ -25,7 +25,7 @@ backend: depend fsed testbin
 testbin: testbingen
 
 testbingen: $(TEST_BIN)
-	$(CC) $(CFLAGS) $(TEST_BIN) -o testbin
+	$(CC) $(CFLAGS) $(TEST_BIN) -o test/testbin
 clean:
 	rm -f fsed testbin
 	rm -rf $(OBJDIR)

@@ -1,5 +1,5 @@
 # fsed  
-:scissors: Change what a process reads from a file without changing it; sed for files  
+:scissors: Change what a process reads from a file without actually changing the contents on disk; sed for files  
 
 ## Compiling fsed  
 > **NOTE**: fsed is known to work on perfectly fine on WSL (Ubuntu
